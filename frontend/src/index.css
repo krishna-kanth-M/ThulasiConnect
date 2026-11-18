@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #F9F7F7;
+  --color-surface: #FFFFFF;
+  --color-secondary: #DBE2EF;
+  --color-accent: #3F72AF;
+  --color-navy: #112D4E;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: #F9F7F7;
+    color: #112D4E;
+    font-family: Inter, "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  }
+}

@@ -1,0 +1,55 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+playwright-report/
+test-results/
+
+# Local database data & dumps
+pgdata/
+*.sql.bak
+*.dump
+
+# Logs & temporary files
+logs/
+*.log
+tmp/
+temp/
+
+# Audio prohibition guard (ThulasiConnect NEVER stores call audio)
+*.wav
+*.mp3
+*.ogg
+*.opus
+*.webm
+*.m4a
+*.flac
+*.aac
+*.pcm
+
+# Local AI / Speech model weights (auto-downloaded locally by Faster-Whisper / Ollama)
+ai-services/models/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/*.log
+.idea/

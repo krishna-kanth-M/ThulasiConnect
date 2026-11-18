@@ -1,0 +1,14 @@
+# ThulasiConnect — Known Limitations & Hardware Constraints
+
+1. **No Automatic Landline / Mobile Call Capture (`BLOCKED BY EXTERNAL DEPENDENCY`):** A browser web app cannot intercept ordinary PSTN or mobile calls. Until an authorized SIP/PBX/cloud telephony bridge is connected, staff use **Manual Telephone Call Registration** or the **Browser Microphone Prototype** (tracked separately from verified telephone counts).
+2. **ShopAid Live Stock API Unavailable (`BLOCKED BY EXTERNAL DEPENDENCY`):** Live ShopAid vendor API credentials and documentation are unavailable. Only the read-only **CSV Reference Catalog Fallback** is operational; stock statuses imported via CSV are point-in-time snapshots and must be verified inside ShopAid.
+3. **External Notification Delivery (`NOT CONFIGURED`):** Reminders and escalations are delivered **in-app only**. Email (SMTP), SMS, and WhatsApp gateways require vendor credentials and business approval before activation.
+4. **Tamil, English & Tanglish Speech Accuracy Unbenchmarked:** Faster-Whisper `base` (CPU INT8) is verified functionally, but real-world recognition accuracy on Indian pharmaceutical brand names and Tanglish code-switching must be evaluated in a controlled branch pilot. Inline transcript editing is provided on every segment.
+5. **Single-Channel Speaker Labels Are Indicative Only:** Without dual-channel telephony streams or speaker diarization, speaker tags (`Speaker 1`, `Speaker 2`, `Unknown speaker`) remain marked `unverified`.
+6. **Local Development Hardware Limits (Intel Core i3-1115G4, 7.80 GB RAM, Limited Disk):**
+   - Running simultaneous heavy Ollama inference, continuous Faster-Whisper decoding, and multiple browser tabs can cause RAM pressure. Ollama uses `keep_alive: "2m"` to free ~1.5 GB RAM when idle.
+   - Single-user local testing does not prove multi-branch concurrent production capacity; central-server sizing is required before multi-branch rollout.
+7. **Browser `ScriptProcessorNode` Deprecation:** Live browser audio downsampling currently uses `ScriptProcessorNode` (functional in Chrome/Edge today) and should be migrated to `AudioWorkletNode` prior to production rollout.
+8. **Password Reset in Local Dev Mode:** Because SMTP is `NOT CONFIGURED`, `APP_ENV=development` returns `dev_reset_token` directly in the response for local testing (suppressed when `APP_ENV=production`).
+9. **Staffing Structure Pending Business Confirmation:** Bootstrapped branch `CBE-GP` (Gandhipuram) currently has `0` active pharmacists and shares its Branch Manager with `CBE-RSP` (RS Puram). Existing records were preserved unchanged and surfaced via non-destructive staffing warning badges.
+10. **Developer-Only Audio Script in `tests/`:** Pre-existing developer test script `tests/record_sample.py` and `tests/sample.wav` exist inside `tests/` only (gitignored and unused by `backend/` or `frontend/`). Exclude `tests/` from any production deployment package.
