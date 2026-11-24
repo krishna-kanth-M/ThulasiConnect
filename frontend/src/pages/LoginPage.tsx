@@ -34,6 +34,20 @@ export function LoginPage() {
     }
   };
 
+  const handleQuickLogin = async (demoEmail: string) => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await login(demoEmail, 'ThulasiDev#2026');
+      notify(`Signed in as ${demoEmail.split('@')[0]}.`);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : 'Unable to sign in.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -202,6 +216,74 @@ export function LoginPage() {
                     Forgot / Reset Password?
                   </button>
                   <span className="text-[#112D4E]/50">RBAC Protected</span>
+                </div>
+
+                <div className="mt-6 border-t border-[#DBE2EF] pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#112D4E]/60">
+                      1-Click Showcase Demo
+                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+                      Public Preview
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#112D4E]/70">
+                    Select any role to explore its complete workflow journey:
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickLogin('pharmacist.rspuram@thulasipharmacy.local')}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
+                    >
+                      <span className="text-base">💊</span>
+                      <div>
+                        <div className="font-semibold leading-tight">Pharmacist</div>
+                        <div className="text-[10px] text-[#112D4E]/60">Call Desk & Requests</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickLogin('manager.rspuram@thulasipharmacy.local')}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
+                    >
+                      <span className="text-base">🏢</span>
+                      <div>
+                        <div className="font-semibold leading-tight">Branch Manager</div>
+                        <div className="text-[10px] text-[#112D4E]/60">Supervision & Esc.</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickLogin('zonal.west@thulasipharmacy.local')}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
+                    >
+                      <span className="text-base">🗺️</span>
+                      <div>
+                        <div className="font-semibold leading-tight">Zonal Manager</div>
+                        <div className="text-[10px] text-[#112D4E]/60">Regional Analysis</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickLogin('owner@thulasipharmacy.local')}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
+                    >
+                      <span className="text-base">👑</span>
+                      <div>
+                        <div className="font-semibold leading-tight">Owner / Director</div>
+                        <div className="text-[10px] text-[#112D4E]/60">Executive Metrics</div>
+                      </div>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleQuickLogin('admin@thulasipharmacy.local')}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] py-1.5 px-3 font-medium text-xs text-[#112D4E] hover:border-[#3F72AF] hover:bg-white transition-colors cursor-pointer"
+                  >
+                    <span>🛡️</span>
+                    <span>Sign in as System Administrator (Full System Control)</span>
+                  </button>
                 </div>
               </>
             )}
