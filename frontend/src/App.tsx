@@ -62,11 +62,12 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const basename = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <AuthProvider>
-          <BrowserRouter>
+          <BrowserRouter basename={basename === '/' ? undefined : basename}>
             <Routes>
               <Route
                 path="/login"
