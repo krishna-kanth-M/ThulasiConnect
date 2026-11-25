@@ -1,0 +1,58 @@
+# ==============================================================================
+# ThulasiConnect Render Blueprint Specification (Infrastructure-as-Code)
+# ==============================================================================
+# Architecture:
+# - Web Service: FastAPI ASGI container with WebSockets & Escalation Scheduler (advisory locked)
+# - Pre-Deploy: Runs Alembic migrations in an isolated container prior to container boot
+# - Database: Render Managed PostgreSQL 16 (Starter plan: 1 GB RAM, 10 GB disk, zero cold starts)
+# ==============================================================================
+
+services:
+  - type: web
+    name: thulasiconnect-backend
+    env: docker
+    dockerfilePath: deployment/Dockerfile.backend
+    dockerContext: .
+    plan: starter # 512 MB RAM / 0.5 CPU ($7/mo) for API. Use standard ($25/mo - 2 GB RAM) if co-hosting Faster-Whisper.
+    region: oregon
+    healthCheckPath: /api/health
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - key: APP_NAME
+        value: ThulasiConnect
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: thulasiconnect-db
+          property: connectionString
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://thulasiconnect.vercel.app,https://thulasiconnect-krishna-kanth-m.vercel.app"
+      - key: AUDIO_STORAGE_ENABLED
+        value: "false"
+      - key: OLLAMA_BASE_URL
+        value: "" # Empty in cloud to activate built-in deterministic regex fallback without network timeouts
+      - key: ESCALATION_BRANCH_MANAGER_OVERDUE_MINUTES
+        value: "60"
+      - key: ESCALATION_ZONAL_MANAGER_OVERDUE_MINUTES
+        value: "240"
+      - key: ESCALATION_OWNER_OVERDUE_MINUTES
+        value: "1440"
+
+databases:
+  - name: thulasiconnect-db
+    databaseName: thulasiconnect_prod
+    user: thulasi_admin
+    plan: starter # 1 GB RAM, 10 GB storage, $7/mo, daily automated backups, 0 cold starts
+    region: oregon
+    postgresMajorVersion: "16"
