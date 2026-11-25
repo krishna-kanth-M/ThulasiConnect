@@ -22,6 +22,7 @@ frontend/dist/
 frontend/.vite/
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # Local database data & dumps
 pgdata/
@@ -49,7 +50,14 @@ temp/
 ai-services/models/
 
 # OS & IDE
+.vercel/
 .DS_Store
 Thumbs.db
 .vscode/*.log
 .idea/
+
+.vercel
+.env*
+!.env.example
+!deployment/.env.production.example
+*.bak

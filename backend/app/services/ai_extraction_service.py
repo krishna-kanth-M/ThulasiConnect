@@ -46,8 +46,32 @@ STRICT RULES:
 }"""
 
 
+def is_ollama_configured() -> bool:
+    """Check if Ollama is explicitly configured with an active, non-localhost endpoint in production."""
+    settings = get_settings()
+    endpoint = (settings.ollama_base_url or "").strip().rstrip("/")
+    if not endpoint or endpoint.lower() in ("none", "disabled", "false", ""):
+        return False
+    # In cloud production environments, avoid polling localhost loopback where no Ollama daemon runs
+    if settings.app_env == "production" and ("localhost" in endpoint or "127.0.0.1" in endpoint):
+        return False
+    return True
+
+
 def check_ollama_health() -> dict[str, Any]:
     settings = get_settings()
+    if not is_ollama_configured():
+        return {
+            "available": False,
+            "configured_model": settings.ollama_model,
+            "model_present": False,
+            "endpoint": settings.ollama_base_url or "disabled",
+            "status": "deterministic_heuristic_active",
+            "message": (
+                "Ollama LLM is not configured for this cloud environment. "
+                "Deterministic heuristic regex extraction is active with zero external latency."
+            ),
+        }
     try:
         with httpx.Client(timeout=3.0) as client:
             ver_resp = client.get(f"{settings.ollama_base_url}/api/version")
@@ -146,7 +170,10 @@ def _heuristic_extract(transcript_text: str) -> dict[str, Any]:
 
 
 def extract_call_requirements(transcript_text: str, language_hint: str | None = None) -> dict[str, Any]:
-    """Send transcript text ONLY to local Ollama Qwen 2.5 1.5B for structured JSON extraction."""
+    """Extract structured call requirements via configured Ollama model, or immediate deterministic fallback."""
+    if not is_ollama_configured():
+        return _heuristic_extract(transcript_text)
+
     settings = get_settings()
     user_prompt = (
         f"Language hint: {language_hint or 'auto (English/Tamil/Tanglish)'}\n"

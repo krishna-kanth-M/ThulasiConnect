@@ -11,6 +11,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import text
+
 from app.core.audit import write_audit_log
 from app.core.database import SessionLocal
 from app.services.escalation_service import evaluate_overdue_followups_and_escalations
@@ -34,7 +36,26 @@ class EscalationScheduler:
 
     def _run_once_sync(self) -> dict[str, int]:
         db = SessionLocal()
+        # ThulasiConnect 64-bit integer advisory lock key (hash identifier for escalation scheduler)
+        SCHEDULER_LOCK_ID = 84251293
+        acquired_lock = False
         try:
+            # Single-instance safeguard: acquire non-blocking PostgreSQL advisory lock if running on PostgreSQL
+            if db.bind and db.bind.dialect.name == "postgresql":
+                lock_res = db.scalar(text(f"SELECT pg_try_advisory_lock({SCHEDULER_LOCK_ID})"))
+                if not lock_res:
+                    logger.debug("Escalation scheduler cycle skipped: advisory lock held by another active instance.")
+                    return {
+                        "status": "skipped_concurrent_instance_running",
+                        "evaluated_overdue": 0,
+                        "newly_marked_overdue": 0,
+                        "reminders_created": 0,
+                        "escalations_created": 0,
+                        "notifications_created": 0,
+                        "config_warnings_created": 0,
+                    }
+                acquired_lock = True
+
             res = evaluate_overdue_followups_and_escalations(db)
             if (
                 res["newly_marked_overdue"] > 0
@@ -55,6 +76,12 @@ class EscalationScheduler:
             db.rollback()
             raise
         finally:
+            if acquired_lock and db.bind and db.bind.dialect.name == "postgresql":
+                try:
+                    db.execute(text(f"SELECT pg_advisory_unlock({SCHEDULER_LOCK_ID})"))
+                    db.commit()
+                except Exception as unlock_err:
+                    logger.warning("Failed to release advisory lock cleanly: %s", unlock_err)
             db.close()
 
     async def run_cycle_now(self) -> dict[str, int]:

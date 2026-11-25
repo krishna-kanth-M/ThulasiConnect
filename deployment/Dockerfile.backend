@@ -1,0 +1,47 @@
+# Multi-stage production container for ThulasiConnect FastAPI Backend
+FROM python:3.13-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    AUDIO_STORAGE_ENABLED=false \
+    HF_HUB_DISABLE_SYMLINKS_WARNING=1
+
+WORKDIR /app
+
+# Install minimal OS dependencies:
+# - curl: for health check
+# - libpq5: for PostgreSQL psycopg driver
+# - libgomp1: required by CTranslate2 / Faster-Whisper CPU OpenMP multithreading
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq5 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install backend Python requirements
+COPY backend/requirements.txt /app/backend/requirements.txt
+COPY ai-services/requirements.txt /app/ai-services/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
+    && pip install --no-cache-dir -r /app/ai-services/requirements.txt
+
+# Copy backend application code and alembic migrations
+COPY backend /app/backend
+
+# Copy entrypoint and migration scripts
+COPY deployment/entrypoint.sh /app/entrypoint.sh
+COPY deployment/migrate.sh /app/migrate.sh
+RUN chmod +x /app/entrypoint.sh /app/migrate.sh
+
+WORKDIR /app/backend
+
+# Expose default port
+EXPOSE 8000
+
+# Health check against live endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
+
+# Production startup runs migrations then starts Uvicorn
+ENTRYPOINT ["/app/entrypoint.sh"]

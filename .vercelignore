@@ -1,0 +1,31 @@
+# Vercel Deployment Ignore File
+# Only frontend assets and necessary build files should be uploaded to Vercel
+
+# Local AI models & audio
+ai-services/
+*.wav
+
+# Backend & Python virtual environment
+backend/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Tests & MCP artifacts
+tests/
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Documentation & Database backups
+docs/
+pgdata/
+*.dump
+*.sql.bak
+scripts/
+
+# Secrets & Environment
+.env
+.env.local
+.env.*.local

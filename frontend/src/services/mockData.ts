@@ -1293,39 +1293,15 @@ export function getMockResponse<T>(
   const method = (options.method || 'GET').toUpperCase();
   const cleanPath = path.split('?')[0];
 
-  // 1. Authentication
-  if (cleanPath === '/api/auth/login' && method === 'POST') {
-    const body = (options.body as { email?: string; password?: string }) || {};
-    const email = (body.email || 'pharmacist.rspuram@thulasipharmacy.local').toLowerCase();
-    const user = DEMO_USERS[email] || DEMO_USERS['pharmacist.rspuram@thulasipharmacy.local'];
-    return {
-      access_token: `mock_jwt_token_${user.email}`,
-      token_type: 'bearer',
-      expires_at: new Date(Date.now() + 86400000).toISOString(),
-      user,
-    } as T;
+  // SECURITY GUARD: Mock authentication is strictly disabled in all environments.
+  // Authentication must always be verified by the live backend database.
+  if (cleanPath.startsWith('/api/auth/')) {
+    return undefined;
   }
 
-  if (cleanPath === '/api/auth/me') {
-    const token = sessionStorage.getItem('tc_access_token') || localStorage.getItem('tc_access_token') || '';
-    const match = token.match(/mock_jwt_token_(.+)/);
-    const email = match ? match[1] : 'pharmacist.rspuram@thulasipharmacy.local';
-    return (DEMO_USERS[email] || DEMO_USERS['pharmacist.rspuram@thulasipharmacy.local']) as T;
-  }
-
-  if (cleanPath === '/api/auth/logout') {
-    return { message: 'Logged out successfully' } as T;
-  }
-
-  if (cleanPath === '/api/auth/password-reset/request') {
-    return {
-      message: 'Password reset token generated (Showcase Mode).',
-      dev_reset_token: 'TC-DEMO-RESET-TOKEN-2026',
-    } as T;
-  }
-
-  if (cleanPath === '/api/auth/password-reset/confirm') {
-    return { message: 'Password updated successfully. You can now sign in.' } as T;
+  // SECURITY GUARD: In production builds, mock data fallbacks are completely disabled.
+  if (import.meta.env.PROD || import.meta.env.VITE_ENABLE_DEV_MOCK_FALLBACK !== 'true') {
+    return undefined;
   }
 
   // 2. Dashboard

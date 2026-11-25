@@ -34,18 +34,11 @@ export function LoginPage() {
     }
   };
 
-  const handleQuickLogin = async (demoEmail: string) => {
+  const handleSelectAccount = (selectedEmail: string) => {
+    setEmail(selectedEmail);
+    setPassword('');
     setError(null);
-    setSubmitting(true);
-    try {
-      await login(demoEmail, 'ThulasiDev#2026');
-      notify(`Signed in as ${demoEmail.split('@')[0]}.`);
-      navigate('/', { replace: true });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Unable to sign in.');
-    } finally {
-      setSubmitting(false);
-    }
+    notify(`Selected ${selectedEmail}. Enter password to sign in.`, 'info');
   };
 
   const handleResetRequest = async (e: React.FormEvent) => {
@@ -221,68 +214,68 @@ export function LoginPage() {
                 <div className="mt-6 border-t border-[#DBE2EF] pt-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#112D4E]/60">
-                      1-Click Showcase Demo
+                      Authorized Staff Accounts
                     </span>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
-                      Public Preview
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-[#112D4E]">
+                      RBAC Enforced
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-[#112D4E]/70">
-                    Select any role to explore its complete workflow journey:
+                    Click any staff profile to populate email, then enter your password:
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => void handleQuickLogin('pharmacist.rspuram@thulasipharmacy.local')}
+                      onClick={() => handleSelectAccount('pharmacist.rspuram@thulasipharmacy.local')}
                       className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
                     >
                       <span className="text-base">💊</span>
                       <div>
                         <div className="font-semibold leading-tight">Pharmacist</div>
-                        <div className="text-[10px] text-[#112D4E]/60">Call Desk & Requests</div>
+                        <div className="text-[10px] text-[#112D4E]/60">RS Puram Branch</div>
                       </div>
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleQuickLogin('manager.rspuram@thulasipharmacy.local')}
+                      onClick={() => handleSelectAccount('manager.rspuram@thulasipharmacy.local')}
                       className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
                     >
                       <span className="text-base">🏢</span>
                       <div>
                         <div className="font-semibold leading-tight">Branch Manager</div>
-                        <div className="text-[10px] text-[#112D4E]/60">Supervision & Esc.</div>
+                        <div className="text-[10px] text-[#112D4E]/60">RS Puram Branch</div>
                       </div>
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleQuickLogin('zonal.west@thulasipharmacy.local')}
+                      onClick={() => handleSelectAccount('zonal.west@thulasipharmacy.local')}
                       className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
                     >
                       <span className="text-base">🗺️</span>
                       <div>
                         <div className="font-semibold leading-tight">Zonal Manager</div>
-                        <div className="text-[10px] text-[#112D4E]/60">Regional Analysis</div>
+                        <div className="text-[10px] text-[#112D4E]/60">West Zone</div>
                       </div>
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleQuickLogin('owner@thulasipharmacy.local')}
+                      onClick={() => handleSelectAccount('owner@thulasipharmacy.local')}
                       className="flex items-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] p-2 font-medium text-[#112D4E] hover:border-[#3F72AF] hover:bg-white text-left transition-colors cursor-pointer"
                     >
                       <span className="text-base">👑</span>
                       <div>
                         <div className="font-semibold leading-tight">Owner / Director</div>
-                        <div className="text-[10px] text-[#112D4E]/60">Executive Metrics</div>
+                        <div className="text-[10px] text-[#112D4E]/60">Executive</div>
                       </div>
                     </button>
                   </div>
                   <button
                     type="button"
-                    onClick={() => void handleQuickLogin('admin@thulasipharmacy.local')}
+                    onClick={() => handleSelectAccount('admin@thulasipharmacy.local')}
                     className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#DBE2EF] bg-[#F9F7F7] py-1.5 px-3 font-medium text-xs text-[#112D4E] hover:border-[#3F72AF] hover:bg-white transition-colors cursor-pointer"
                   >
                     <span>🛡️</span>
-                    <span>Sign in as System Administrator (Full System Control)</span>
+                    <span>Select System Administrator (admin@thulasipharmacy.local)</span>
                   </button>
                 </div>
               </>

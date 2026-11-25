@@ -14,12 +14,38 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Validates that a token strictly conforms to standard signed JWT format (header.payload.signature).
+ * Any arbitrary string, empty value, or legacy mock string (e.g. mock_jwt_token_...) is immediately rejected.
+ */
+export function isValidJwtFormat(token: string | null | undefined): boolean {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.trim().split('.');
+  if (parts.length !== 3) return false;
+  // All three parts must be non-empty base64url-compliant characters
+  return parts.every((part) => part.length > 0 && /^[a-zA-Z0-9_-]+$/.test(part));
+}
+
+/**
+ * Retrieves the stored JWT token.
+ * If the stored token is missing, expired, or does not match a valid cryptographic JWT format,
+ * it is immediately purged from both sessionStorage and localStorage.
+ */
 export function getStoredToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+
+  if (!isValidJwtFormat(token)) {
+    // Purge invalid, corrupted, or mock tokens immediately
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  }
+  return token;
 }
 
 export function setStoredToken(token: string | null): void {
-  if (!token) {
+  if (!token || !isValidJwtFormat(token)) {
     sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
   } else {
@@ -45,13 +71,16 @@ export async function apiRequest<T>(
     skipAuth?: boolean;
   } = {},
 ): Promise<T> {
+  const isAuthEndpoint = path.startsWith('/api/auth/');
   const headers: Record<string, string> = {};
+
   if (!options.skipAuth) {
     const token = getStoredToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
   }
+
   let body: BodyInit | undefined;
   if (options.formData) {
     body = options.formData;
@@ -60,7 +89,7 @@ export async function apiRequest<T>(
     body = JSON.stringify(options.body);
   }
 
-  // 1. Try real live backend first
+  // 1. Execute live backend HTTP request
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       method: options.method || 'GET',
@@ -69,6 +98,8 @@ export async function apiRequest<T>(
     });
 
     const contentType = response.headers.get('content-type') || '';
+
+    // Success response with JSON or 204 No Content
     if (response.ok && (contentType.includes('application/json') || response.status === 204)) {
       if (response.status === 204) {
         return undefined as T;
@@ -76,8 +107,16 @@ export async function apiRequest<T>(
       return (await response.json()) as T;
     }
 
-    // If the server explicitly returned an intentional API error (e.g. 401, 403, 422, 400 with JSON)
-    if (!response.ok && contentType.includes('application/json') && response.status !== 404) {
+    // Static server rewrite intercept (e.g. Vercel returning index.html on POST or missing backend)
+    if (response.status === 405 || (contentType.includes('text/html') && path.startsWith('/api/'))) {
+      throw new ApiError(
+        503,
+        'Backend API service is currently unavailable or not connected (HTTP 405 / Static Rewrite).',
+      );
+    }
+
+    // Server returned a structured JSON error response (e.g. 401 Unauthorized, 403 Forbidden, 422 Unprocessable)
+    if (contentType.includes('application/json')) {
       let detail = `Request failed (${response.status})`;
       try {
         const errJson = await response.json();
@@ -87,61 +126,75 @@ export async function apiRequest<T>(
           detail = errJson.detail.map((d: any) => `${d.loc?.slice(-1)[0] || 'field'}: ${d.msg}`).join('; ');
         }
       } catch {
-        // ignore
+        // ignore JSON parse error
       }
       throw new ApiError(response.status, detail);
     }
+
+    // Standard HTTP error codes without JSON body
+    if (response.status === 401) {
+      throw new ApiError(401, 'Invalid email or password.');
+    }
+    if (response.status === 403) {
+      throw new ApiError(403, 'Access denied. You do not have permission to access this resource.');
+    }
+    if (response.status === 404) {
+      throw new ApiError(404, `Requested API endpoint not found: ${path}`);
+    }
+
+    throw new ApiError(response.status, `Server returned HTTP ${response.status}.`);
   } catch (err) {
+    // If it's already an ApiError from the response inspection, rethrow directly
     if (err instanceof ApiError) {
       throw err;
     }
-    // Fall through to mock showcase data when fetch fails or returns 404 HTML on static hosts
+
+    // Network level failure (connection refused, DNS failure, CORS, offline)
+    if (isAuthEndpoint) {
+      throw new ApiError(
+        503,
+        'Unable to connect to the authentication server. Please check your network connection or verify that the backend is running.',
+      );
+    }
+
+    // In production builds, never silently swallow errors
+    if (import.meta.env.PROD) {
+      throw new ApiError(
+        503,
+        'Backend service unavailable. Please ensure the production API server is connected.',
+      );
+    }
   }
 
-  // 2. Showcase / Preview fallback for public viewers when live backend is offline
-  const mock = getMockResponse<T>(path, options);
-  if (mock !== undefined) {
-    return mock;
+  // 2. Strict development-only fallback for non-auth UI inspection (never runs for /api/auth/ or in production)
+  if (!isAuthEndpoint && !import.meta.env.PROD && import.meta.env.VITE_ENABLE_DEV_MOCK_FALLBACK === 'true') {
+    const mock = getMockResponse<T>(path, options);
+    if (mock !== undefined) {
+      return mock;
+    }
   }
 
   throw new ApiError(503, 'Service unavailable. Live backend connection required.');
 }
 
 export async function downloadCsvReport(path: string, fallbackFilename: string): Promise<void> {
-  try {
-    const token = getStoredToken();
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fallbackFilename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      return;
-    }
-  } catch {
-    // Fall through to mock CSV export
+  const token = getStoredToken();
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (response.ok) {
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fallbackFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return;
   }
 
-  // Showcase fallback CSV
-  const csvContent =
-    'branch_code,branch_name,calls,requests,resolved,overdue,escalations\n' +
-    'CBE-RSP,Coimbatore - RS Puram Main,58,52,48,1,1\n' +
-    'CBE-GP,Coimbatore - Gandhipuram Central,6,4,3,1,0\n' +
-    'MDU-KKN,Madurai - KK Nagar Hub,22,20,19,0,0\n';
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fallbackFilename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  throw new ApiError(response.status, 'Unable to generate CSV export from the server.');
 }
